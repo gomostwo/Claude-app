@@ -1,0 +1,122 @@
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+from datetime import datetime
+import pytz
+import logging
+
+logger = logging.getLogger(__name__)
+scheduler = BackgroundScheduler(timezone=pytz.utc)
+
+
+def run_scheduled_scan():
+    """
+    Scheduled scan: analyze each user's watchlist, check alerts, send Telegram notifications.
+    Runs every 15 minutes during US market hours (Mon-Fri 09:30-16:00 ET).
+    """
+    from ..database import SessionLocal
+    from ..models.user import User
+    from ..models.watchlist import WatchlistItem
+    from ..services.stock_data import get_current_quote
+    from ..services.technical_analysis import compute_technical_indicators, run_screener
+    from ..services.fundamental_analysis import compute_fundamental_data
+    from ..services.ai_analysis import run_ai_analysis
+    from ..services.notification_service import (
+        check_price_alerts,
+        check_rsi_alerts,
+        send_ai_recommendation_notification,
+    )
+
+    logger.info(f"[Scheduler] Starting market scan at {datetime.utcnow().isoformat()}")
+    db = SessionLocal()
+    try:
+        users = db.query(User).filter(User.is_active == True).all()  # noqa: E712
+
+        for user in users:
+            items = db.query(WatchlistItem).filter(WatchlistItem.user_id == user.id).all()
+            if not items:
+                continue
+
+            user_profile = {
+                "budget": user.budget,
+                "investment_style": user.investment_style,
+                "time_horizon": user.time_horizon,
+                "risk_tolerance": user.risk_tolerance,
+            }
+
+            for item in items:
+                try:
+                    ticker = item.ticker
+                    quote = get_current_quote(ticker)
+                    technical = compute_technical_indicators(ticker)
+
+                    current_price = quote.get("price") if quote else None
+
+                    # Price alerts
+                    if current_price:
+                        check_price_alerts(db, user.id, item, current_price, user.telegram_chat_id)
+
+                    # RSI alerts
+                    if technical and technical.get("rsi") is not None:
+                        check_rsi_alerts(db, user.id, item, technical["rsi"], user.telegram_chat_id)
+
+                    # Run screener — only do AI analysis on signal tickers
+                    signals = run_screener(ticker)
+                    if signals:
+                        fundamental = compute_fundamental_data(ticker)
+                        ai_result = run_ai_analysis(ticker, technical, fundamental, user_profile)
+                        if ai_result:
+                            send_ai_recommendation_notification(
+                                db, user.id, ticker, ai_result, current_price, user.telegram_chat_id
+                            )
+
+                except Exception as e:
+                    logger.error(f"[Scheduler] Error processing {item.ticker} for user {user.id}: {e}")
+                    continue
+
+    except Exception as e:
+        logger.error(f"[Scheduler] Fatal scan error: {e}")
+    finally:
+        db.close()
+
+    logger.info("[Scheduler] Scan complete")
+
+
+def refresh_universe():
+    """Daily job: refresh the stock universe cache."""
+    from ..utils.cache import universe_cache
+    universe_cache.delete("universe")
+    from ..services.stock_data import get_universe
+    get_universe()
+    logger.info("[Scheduler] Universe cache refreshed")
+
+
+def start_scheduler():
+    if not scheduler.running:
+        # Market scan: every 15 min, Mon-Fri, 09:30-16:15 ET (14:30-21:15 UTC)
+        scheduler.add_job(
+            run_scheduled_scan,
+            CronTrigger(
+                day_of_week="mon-fri",
+                hour="14-21",
+                minute="0,15,30,45",
+                timezone=pytz.utc,
+            ),
+            id="market_scan",
+            replace_existing=True,
+            misfire_grace_time=300,
+        )
+        # Daily universe refresh at midnight UTC
+        scheduler.add_job(
+            refresh_universe,
+            CronTrigger(hour=0, minute=0),
+            id="universe_refresh",
+            replace_existing=True,
+        )
+        scheduler.start()
+        logger.info("[Scheduler] Started")
+
+
+def stop_scheduler():
+    if scheduler.running:
+        scheduler.shutdown(wait=False)
+        logger.info("[Scheduler] Stopped")
