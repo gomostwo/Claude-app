@@ -19,6 +19,18 @@ class Settings(BaseSettings):
     # Telegram
     telegram_bot_token: str = ""
 
+    # Market data providers (all optional — yfinance works without keys)
+    finnhub_api_key: str = ""
+    twelvedata_api_key: str = ""
+    fmp_api_key: str = ""
+    alphavantage_api_key: str = ""
+
+    # Provider request throttling (seconds between calls per provider)
+    finnhub_throttle: float = 1.0       # free: 60 req/min
+    twelvedata_throttle: float = 7.5    # free: 8 req/min
+    fmp_throttle: float = 0.35          # free: 250/day, ~3/s safe
+    alphavantage_throttle: float = 13.0 # free: 5 req/min
+
     # Analysis schedule (minutes between scans during market hours)
     scan_interval_minutes: int = 15
 

@@ -15,16 +15,53 @@ def _profile_hash(user_profile: dict) -> str:
     return hashlib.md5(serialized.encode()).hexdigest()[:8]
 
 
+def _format_multi_provider(mp: dict) -> str:
+    """Render multi-provider quotes/fundamentals as a comparison block for the AI."""
+    if not mp:
+        return ""
+    lines = []
+    quotes = mp.get("quotes") or {}
+    if quotes:
+        lines.append("**Cross-Provider Quotes:**")
+        for provider, q in quotes.items():
+            if q.get("error"):
+                lines.append(f"- {provider}: error ({q['error']})")
+            else:
+                lines.append(
+                    f"- {provider}: price={q.get('price')}, "
+                    f"chg%={q.get('change_percent')}, vol={q.get('volume')}"
+                )
+    funds = mp.get("fundamentals") or {}
+    if funds:
+        lines.append("\n**Cross-Provider Fundamentals:**")
+        for provider, f in funds.items():
+            if f.get("error"):
+                lines.append(f"- {provider}: error ({f['error']})")
+                continue
+            lines.append(
+                f"- {provider}: P/E={f.get('pe_ratio')}, FwdP/E={f.get('forward_pe')}, "
+                f"EPS={f.get('eps')}, RevGrowth={f.get('revenue_growth')}, "
+                f"ProfitMargin={f.get('profit_margin')}, D/E={f.get('debt_to_equity')}, "
+                f"DivYld={f.get('dividend_yield')}, Beta={f.get('beta')}, "
+                f"Sector={f.get('sector')}"
+            )
+    return "\n".join(lines)
+
+
 def run_ai_analysis(
     ticker: str,
     technical: dict,
     fundamental: Optional[dict],
     user_profile: Optional[dict] = None,
+    multi_provider: Optional[dict] = None,
 ) -> Optional[dict]:
     """Call Claude API to generate a personalized stock recommendation."""
 
     profile_hash = _profile_hash(user_profile or {})
-    cache_key = f"ai:{ticker}:{profile_hash}"
+    mp_hash = hashlib.md5(
+        json.dumps(multi_provider or {}, sort_keys=True, default=str).encode()
+    ).hexdigest()[:6] if multi_provider else "none"
+    cache_key = f"ai:{ticker}:{profile_hash}:{mp_hash}"
     cached = stock_cache.get(cache_key)
     if cached is not None:
         return cached
@@ -88,6 +125,8 @@ def run_ai_analysis(
             fund_lines.append(f"Sector: {fundamental['sector']} | Industry: {fundamental.get('industry', 'N/A')}")
         fund_context = "\n".join(fund_lines)
 
+    multi_provider_block = _format_multi_provider(multi_provider) if multi_provider else ""
+
     prompt = f"""You are a professional financial analyst. Analyze the following {asset_label} and provide a trading recommendation.
 
 **Asset:** {ticker}
@@ -96,6 +135,10 @@ def run_ai_analysis(
 {tech_context}
 
 {"**Fundamental Analysis:**" + chr(10) + fund_context if fund_context else ""}
+
+{multi_provider_block}
+
+When cross-provider data is present, note any meaningful disagreement between sources in your reasoning, and weigh values by consensus rather than any single provider.
 
 Based on this data, provide a JSON response with the following structure:
 {{

@@ -35,6 +35,17 @@ TELEGRAM_BOT_TOKEN=123456:ABC...
 SECRET_KEY=your-long-random-secret
 ```
 
+Optional market data providers (all free tiers; yfinance works without keys):
+```env
+FINNHUB_API_KEY=         # https://finnhub.io/register        — 60 req/min
+TWELVEDATA_API_KEY=      # https://twelvedata.com/pricing      — 800 req/day
+FMP_API_KEY=             # https://site.financialmodelingprep.com/developer — 250 req/day
+ALPHAVANTAGE_API_KEY=    # https://www.alphavantage.co/support/#api-key     — 25 req/day
+```
+Each configured provider is queried during every scan and stored as a
+separate row in `provider_quotes` / `provider_fundamentals`. The AI sees
+all sources side-by-side and cross-validates.
+
 ### 3. Start the app
 ```bash
 docker compose up --build -d
@@ -102,7 +113,13 @@ For HTTPS, add Certbot/nginx SSL on top.
 - **HTTP Client**: httpx
 
 ### Data & Analysis
-- **Market Data**: yfinance (Yahoo Finance — free)
+- **Market Data (multi-provider)**:
+  - yfinance — always-on baseline (no key)
+  - Finnhub — 60 req/min free, real-time US quotes
+  - Twelve Data — 800 req/day free, strong commodities coverage
+  - FMP — 250 req/day free, deep fundamentals
+  - Alpha Vantage — 25 req/day free, commodity time-series
+- **Storage Model**: each provider's quote + fundamentals stored separately (`provider_quotes`, `provider_fundamentals`) so AI sees all sources for cross-validation
 - **Data Processing**: pandas 2.2, NumPy 1.26
 - **Technical Indicators**: pandas-ta (RSI, MACD, Bollinger Bands, SMA/EMA)
 - **HTML/XML Parsing**: lxml, html5lib, BeautifulSoup4

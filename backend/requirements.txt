@@ -20,3 +20,5 @@ html5lib==1.1
 beautifulsoup4==4.12.3
 cachetools==5.3.3
 pytz==2024.1
+finnhub-python==2.4.20
+twelvedata==1.2.18

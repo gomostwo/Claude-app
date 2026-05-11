@@ -25,6 +25,7 @@ def run_scheduled_scan():
         check_rsi_alerts,
         send_ai_recommendation_notification,
     )
+    from ..services.data_ingestion import ingest_ticker, get_latest_multi_provider
 
     logger.info(f"[Scheduler] Starting market scan at {datetime.utcnow().isoformat()}")
     db = SessionLocal()
@@ -46,6 +47,12 @@ def run_scheduled_scan():
             for item in items:
                 try:
                     ticker = item.ticker
+                    # Multi-provider ingest — stores raw rows per provider
+                    try:
+                        ingest_ticker(db, ticker)
+                    except Exception as ing_err:
+                        logger.error(f"[Scheduler] ingest_ticker failed for {ticker}: {ing_err}")
+
                     quote = get_current_quote(ticker)
                     technical = compute_technical_indicators(ticker)
 
@@ -63,7 +70,11 @@ def run_scheduled_scan():
                     signals = run_screener(ticker)
                     if signals:
                         fundamental = compute_fundamental_data(ticker)
-                        ai_result = run_ai_analysis(ticker, technical, fundamental, user_profile)
+                        multi_provider = get_latest_multi_provider(db, ticker)
+                        ai_result = run_ai_analysis(
+                            ticker, technical, fundamental, user_profile,
+                            multi_provider=multi_provider,
+                        )
                         if ai_result:
                             send_ai_recommendation_notification(
                                 db, user.id, ticker, ai_result, current_price, user.telegram_chat_id

@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from sqlalchemy.orm import Session
 from typing import List, Optional
+from ..database import get_db
 from ..models.user import User
 from ..schemas.stock import StockQuote, TechnicalData, FundamentalData, AIRecommendation, FullAnalysis, ScreenerResult
 from ..utils.auth import get_current_user
@@ -7,8 +9,36 @@ from ..services.stock_data import get_current_quote, search_tickers, COMMODITY_T
 from ..services.technical_analysis import compute_technical_indicators, run_screener
 from ..services.fundamental_analysis import compute_fundamental_data
 from ..services.ai_analysis import run_ai_analysis
+from ..services.data_ingestion import ingest_ticker, get_latest_multi_provider
+from ..services.providers import enabled_providers
 
 router = APIRouter(prefix="/api/stocks", tags=["stocks"])
+
+
+@router.get("/providers")
+def list_providers(current_user: User = Depends(get_current_user)):
+    """Show which market data providers are configured."""
+    return {"enabled": [p.name for p in enabled_providers()]}
+
+
+@router.get("/{ticker}/multi-provider")
+def get_multi_provider_view(
+    ticker: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return latest stored quote + fundamental rows per provider."""
+    return get_latest_multi_provider(db, ticker.upper())
+
+
+@router.post("/{ticker}/ingest")
+def trigger_ingest(
+    ticker: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Manually fetch from all enabled providers and persist."""
+    return ingest_ticker(db, ticker.upper())
 
 
 @router.get("/search", response_model=List[dict])
@@ -50,10 +80,18 @@ def get_fundamental(ticker: str, current_user: User = Depends(get_current_user))
 @router.post("/{ticker}/analyze", response_model=FullAnalysis)
 def analyze_stock(
     ticker: str,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Manual trigger: full analysis including AI recommendation."""
     ticker = ticker.upper()
+
+    # Fresh multi-provider pull, then read back combined view for the AI
+    try:
+        ingest_ticker(db, ticker)
+    except Exception:
+        pass
+    multi_provider = get_latest_multi_provider(db, ticker)
 
     quote = get_current_quote(ticker)
     technical = compute_technical_indicators(ticker)
@@ -69,7 +107,10 @@ def analyze_stock(
         "risk_tolerance": current_user.risk_tolerance,
     }
 
-    ai_result = run_ai_analysis(ticker, technical, fundamental, user_profile)
+    ai_result = run_ai_analysis(
+        ticker, technical, fundamental, user_profile,
+        multi_provider=multi_provider,
+    )
 
     return {
         "quote": quote,
