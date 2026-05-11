@@ -93,11 +93,36 @@ For HTTPS, add Certbot/nginx SSL on top.
 
 ## Tech Stack
 
-- **Backend**: Python 3.11, FastAPI, SQLAlchemy, SQLite
-- **Data**: yfinance (Yahoo Finance — free)
-- **Analysis**: pandas-ta (technical indicators)
-- **AI**: Anthropic claude-sonnet-4-6
-- **Notifications**: python-telegram-bot
-- **Scheduler**: APScheduler
-- **Frontend**: React + TypeScript, Redux Toolkit
-- **Deployment**: Docker Compose + nginx
+### Backend
+- **Language & Runtime**: Python 3.11
+- **Framework**: FastAPI 0.111 + Uvicorn (ASGI server)
+- **Database**: SQLite via SQLAlchemy 2.0 ORM, Alembic for migrations
+- **Validation**: Pydantic 2 + pydantic-settings
+- **Auth**: JWT (python-jose) + bcrypt password hashing (passlib)
+- **HTTP Client**: httpx
+
+### Data & Analysis
+- **Market Data**: yfinance (Yahoo Finance — free)
+- **Data Processing**: pandas 2.2, NumPy 1.26
+- **Technical Indicators**: pandas-ta (RSI, MACD, Bollinger Bands, SMA/EMA)
+- **HTML/XML Parsing**: lxml, html5lib, BeautifulSoup4
+- **Caching**: cachetools
+- **Timezones**: pytz
+
+### AI & Notifications
+- **LLM**: Anthropic Claude (`claude-sonnet-4-6`) via official `anthropic` SDK
+- **Messaging**: python-telegram-bot 21
+- **Scheduling**: APScheduler (15-min scans during US market hours)
+
+### Frontend
+- **Framework**: React 18 + TypeScript 5
+- **State Management**: Redux Toolkit + React-Redux
+- **Routing**: React Router 6
+- **HTTP Client**: Axios
+- **Charts**: Recharts
+- **Notifications/Toasts**: react-toastify
+- **Build Tooling**: react-scripts (CRA)
+
+### Infrastructure
+- **Reverse Proxy**: nginx (port 80, routes `/api/*` → backend, `/*` → frontend)
+- **Containerization**: Docker + Docker Compose
