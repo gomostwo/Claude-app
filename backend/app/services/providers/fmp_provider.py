@@ -7,22 +7,12 @@ name = "fmp"
 
 BASE_URL = "https://financialmodelingprep.com/api/v3"
 
-COMMODITY_MAP = {
-    "GC=F": "GCUSD",
-    "SI=F": "SIUSD",
-    "CL=F": "CLUSD",
-    "BZ=F": "BZUSD",
-    "NG=F": "NGUSD",
-}
-
 
 def enabled() -> bool:
     return bool(settings.fmp_api_key)
 
 
 def _symbol(ticker: str) -> str:
-    if ticker in COMMODITY_MAP:
-        return COMMODITY_MAP[ticker]
     return ticker.replace("-", ".")
 
 

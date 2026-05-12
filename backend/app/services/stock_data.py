@@ -5,12 +5,30 @@ from ..utils.cache import stock_cache, universe_cache
 from ..config import settings
 
 COMMODITY_TICKERS = {
-    "GC=F": "Gold Futures",
-    "SI=F": "Silver Futures",
-    "CL=F": "WTI Crude Oil Futures",
-    "BZ=F": "Brent Crude Oil Futures",
-    "NG=F": "Natural Gas Futures",
+    "GLD": "SPDR Gold Shares",
+    "SLV": "iShares Silver Trust",
+    "USO": "United States Oil Fund (WTI)",
+    "BNO": "United States Brent Oil Fund",
+    "UNG": "United States Natural Gas Fund",
+    "DBC": "Invesco DB Commodity Index Tracking Fund",
 }
+
+# Correlation groups — risk manager prevents stacking exposure within a group.
+COMMODITY_GROUPS = {
+    "gold": ["GLD"],
+    "silver": ["SLV"],
+    "oil": ["USO", "BNO"],
+    "gas": ["UNG"],
+    "broad": ["DBC"],
+}
+
+
+def commodity_group_for(ticker: str) -> str | None:
+    """Return the COMMODITY_GROUPS bucket key for an ETF, or None if not a tracked commodity."""
+    for bucket, members in COMMODITY_GROUPS.items():
+        if ticker in members:
+            return bucket
+    return None
 
 
 def get_stock_info(ticker: str) -> dict:

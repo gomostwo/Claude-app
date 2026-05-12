@@ -7,22 +7,12 @@ name = "twelvedata"
 
 BASE_URL = "https://api.twelvedata.com"
 
-COMMODITY_MAP = {
-    "GC=F": "XAU/USD",   # Gold spot proxy
-    "SI=F": "XAG/USD",   # Silver spot proxy
-    "CL=F": "WTI/USD",
-    "BZ=F": "BRENT/USD",
-    "NG=F": "NG=F",
-}
-
 
 def enabled() -> bool:
     return bool(settings.twelvedata_api_key)
 
 
 def _symbol(ticker: str) -> str:
-    if ticker in COMMODITY_MAP:
-        return COMMODITY_MAP[ticker]
     return ticker.replace("-", ".")
 
 

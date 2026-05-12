@@ -20,9 +20,6 @@ def enabled() -> bool:
 
 
 def _normalize_ticker(ticker: str) -> str:
-    # Finnhub doesn't support futures with =F suffix; skip commodities
-    if "=F" in ticker:
-        return ""
     return ticker.replace("-", ".")
 
 

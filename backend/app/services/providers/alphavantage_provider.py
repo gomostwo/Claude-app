@@ -7,14 +7,6 @@ name = "alphavantage"
 
 BASE_URL = "https://www.alphavantage.co/query"
 
-COMMODITY_FUNCTIONS = {
-    "GC=F": ("CURRENCY_EXCHANGE_RATE", {"from_currency": "XAU", "to_currency": "USD"}),
-    "SI=F": ("CURRENCY_EXCHANGE_RATE", {"from_currency": "XAG", "to_currency": "USD"}),
-    "CL=F": ("WTI", {"interval": "daily"}),
-    "BZ=F": ("BRENT", {"interval": "daily"}),
-    "NG=F": ("NATURAL_GAS", {"interval": "daily"}),
-}
-
 
 def enabled() -> bool:
     return bool(settings.alphavantage_api_key)
@@ -36,28 +28,6 @@ def _get(params: dict) -> Optional[dict]:
 
 
 def fetch_quote(ticker: str) -> Optional[dict]:
-    if ticker in COMMODITY_FUNCTIONS:
-        func, extra = COMMODITY_FUNCTIONS[ticker]
-        data = _get({"function": func, **extra})
-        if not data:
-            return None
-        if func == "CURRENCY_EXCHANGE_RATE":
-            rate = data.get("Realtime Currency Exchange Rate", {})
-            try:
-                price = float(rate.get("5. Exchange Rate"))
-            except (TypeError, ValueError):
-                return None
-            return {"price": price, "change": None, "change_percent": None, "volume": None, "raw": data}
-        # WTI/BRENT/NATURAL_GAS return time-series
-        series = data.get("data") or []
-        if not series:
-            return None
-        try:
-            price = float(series[0].get("value"))
-        except (TypeError, ValueError):
-            return None
-        return {"price": price, "change": None, "change_percent": None, "volume": None, "raw": data}
-
     sym = ticker.replace("-", ".")
     data = _get({"function": "GLOBAL_QUOTE", "symbol": sym})
     if not data:
@@ -88,8 +58,6 @@ def fetch_quote(ticker: str) -> Optional[dict]:
 
 
 def fetch_fundamentals(ticker: str) -> Optional[dict]:
-    if ticker in COMMODITY_FUNCTIONS:
-        return None
     sym = ticker.replace("-", ".")
     data = _get({"function": "OVERVIEW", "symbol": sym})
     if not data or not data.get("Symbol"):

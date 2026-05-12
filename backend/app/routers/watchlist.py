@@ -6,7 +6,7 @@ from ..models.user import User
 from ..models.watchlist import WatchlistItem
 from ..schemas.watchlist import WatchlistItemCreate, WatchlistItemUpdate, WatchlistItemResponse
 from ..utils.auth import get_current_user
-from ..services.stock_data import get_stock_info
+from ..services.stock_data import get_stock_info, COMMODITY_TICKERS
 
 router = APIRouter(prefix="/api/watchlist", tags=["watchlist"])
 
@@ -36,7 +36,7 @@ def add_to_watchlist(
     ticker_upper = data.ticker.upper()
     info = get_stock_info(ticker_upper)
     company_name = info.get("shortName") or info.get("longName") or ticker_upper
-    asset_type = "commodity" if ticker_upper in _COMMODITY_TICKERS else "stock"
+    asset_type = "commodity" if ticker_upper in COMMODITY_TICKERS else "stock"
 
     item = WatchlistItem(
         user_id=current_user.id,
@@ -90,4 +90,3 @@ def remove_from_watchlist(
     db.commit()
 
 
-_COMMODITY_TICKERS = {"GC=F", "SI=F", "CL=F", "BZ=F", "NG=F"}
