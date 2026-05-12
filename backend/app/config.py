@@ -16,6 +16,12 @@ class Settings(BaseSettings):
     # Anthropic / Claude
     anthropic_api_key: str = ""
 
+    # Tiered AI router — Tier 1 fans out cheaply, Tier 2/3 deepen on candidates
+    ai_tier1_model: str = "deepseek-chat"          # cheap screener (DeepSeek V3)
+    ai_tier2_model: str = "claude-haiku-4-5"       # analysis tier
+    ai_tier3_model: str = "claude-sonnet-4-6"      # commit-grade recommendations
+    deepseek_api_key: str = ""                     # required for Tier 1
+
     # Telegram
     telegram_bot_token: str = ""
 
