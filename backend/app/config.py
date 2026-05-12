@@ -51,6 +51,20 @@ class Settings(BaseSettings):
     ai_cache_ttl: int = 900             # 15 min
     universe_cache_ttl: int = 86400     # 24 hours
 
+    # Trading + risk management
+    paper_trading_enabled: bool = True
+    live_trading_enabled: bool = False      # HARD off — second guard prevents WebullBroker live
+    paper_starting_cash: float = 100_000.0  # USD seed for new paper accounts
+    max_position_pct: float = 0.10          # any single position <= 10% of equity
+    correlation_cap: float = 0.25           # any commodity-group bucket <= 25% of equity
+    daily_loss_kill_pct: float = 0.03       # kill switch trips at -3% intraday
+    slippage_bps: int = 5                   # paper broker fill slippage (basis points)
+    quote_max_staleness_seconds: int = 300  # reject orders if quote older than this
+
+    # Webull (scaffolded; not used until PR10)
+    webull_app_key: str = ""
+    webull_app_secret: str = ""
+
     class Config:
         env_file = ".env"
         case_sensitive = False
