@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     fmp_api_key: str = ""
     alphavantage_api_key: str = ""
 
+    # Commodity-specific data providers (free official sources)
+    eia_api_key: str = ""              # https://www.eia.gov/opendata/register.php
+    fred_api_key: str = ""             # https://fred.stlouisfed.org/docs/api/api_key.html
+    # CFTC COT data is public CSV — no key required
+
     # Provider request throttling (seconds between calls per provider)
     finnhub_throttle: float = 1.0       # free: 60 req/min
     twelvedata_throttle: float = 7.5    # free: 8 req/min
