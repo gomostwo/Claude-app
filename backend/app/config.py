@@ -42,8 +42,10 @@ class Settings(BaseSettings):
     fmp_throttle: float = 0.35          # free: 250/day, ~3/s safe
     alphavantage_throttle: float = 13.0 # free: 5 req/min
 
-    # Analysis schedule (minutes between scans during market hours)
-    scan_interval_minutes: int = 15
+    # Analysis schedule — one EOD run at 22:00 UTC Mon-Fri.
+    # The hour is fixed in tasks/scheduler.py because it must align with the
+    # US daily-candle close (20:00 UTC EDT / 21:00 UTC EST).
+    eod_scan_hour_utc: int = 22
 
     # Cache TTLs (seconds)
     technical_cache_ttl: int = 300      # 5 min

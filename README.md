@@ -13,7 +13,7 @@ A full-stack app that monitors **all US stocks (S&P 500 + NASDAQ 100 + Dow 30)**
 - **Backtester** — Daily-bar replay using the same signal + risk + paper-broker code as live
 - **Webull broker scaffold** — adapter slot in place, kept disabled (NotImplementedError) until OpenAPI key is confirmed and `LIVE_TRADING_ENABLED=true` is set
 - **Telegram notifications** — Price thresholds, RSI signals, AI recommendations
-- **Scheduled scans** — Every 15 min during US market hours (Mon–Fri 09:30–16:00 ET)
+- **End-of-day scans** — Once per trading day at 22:00 UTC (after US daily candle closes), Mon–Fri. Per user: one consolidated Telegram digest covering every watchlist ticker, regime, alerts, and Tier-3 recommendations.
 
 ## Quick Start
 
@@ -91,7 +91,7 @@ nginx (port 80)
 │   ├── AI analysis (Claude API)
 │   ├── Watchlist management
 │   ├── Notifications
-│   └── APScheduler (auto-scan every 15 min)
+│   └── APScheduler (EOD scan once daily at 22:00 UTC Mon-Fri)
 └── /* → React frontend (port 80)
 ```
 
@@ -147,7 +147,7 @@ For HTTPS, add Certbot/nginx SSL on top.
 ### AI & Notifications
 - **LLM**: Anthropic Claude (`claude-sonnet-4-6`) via official `anthropic` SDK
 - **Messaging**: python-telegram-bot 21
-- **Scheduling**: APScheduler (15-min scans during US market hours)
+- **Scheduling**: APScheduler (one EOD scan at 22:00 UTC Mon-Fri, after US daily candle closes)
 
 ### Frontend
 - **Framework**: React 18 + TypeScript 5

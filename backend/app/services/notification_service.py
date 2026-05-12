@@ -2,7 +2,12 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from ..models.notification import Notification
 from ..models.watchlist import WatchlistItem
-from .telegram_service import send_telegram_sync, format_recommendation_message, format_alert_message
+from .telegram_service import (
+    send_telegram_sync,
+    format_recommendation_message,
+    format_alert_message,
+    format_daily_summary,
+)
 
 
 def create_notification(
@@ -116,4 +121,29 @@ def send_ai_recommendation_notification(
         sent = send_telegram_sync(telegram_chat_id, tg_text)
         notif.telegram_sent = sent
 
+    db.commit()
+
+
+def send_daily_summary(
+    db: Session,
+    user_id: int,
+    date_str: str,
+    macro_regime: Optional[dict],
+    sections: list,
+    telegram_chat_id: Optional[str],
+) -> None:
+    """Persist one digest Notification row per user per EOD scan and push to Telegram."""
+    text = format_daily_summary(date_str, macro_regime, sections)
+    notif = Notification(
+        user_id=user_id,
+        ticker="*",
+        type="daily_summary",
+        title=f"Daily summary — {date_str}",
+        message=text,
+    )
+    db.add(notif)
+    db.flush()
+    if telegram_chat_id:
+        sent = send_telegram_sync(telegram_chat_id, text)
+        notif.telegram_sent = sent
     db.commit()
