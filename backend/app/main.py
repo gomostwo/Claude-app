@@ -5,7 +5,7 @@ import logging
 
 from .database import init_db
 from .tasks.scheduler import start_scheduler, stop_scheduler
-from .routers import auth, users, stocks, watchlist, notifications, commodities
+from .routers import auth, users, stocks, watchlist, notifications, commodities, trading
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -45,6 +45,7 @@ app.include_router(stocks.router)
 app.include_router(watchlist.router)
 app.include_router(notifications.router)
 app.include_router(commodities.router)
+app.include_router(trading.router)
 
 
 @app.get("/health")
