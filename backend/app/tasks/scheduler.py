@@ -16,7 +16,12 @@ scheduler = BackgroundScheduler(timezone=pytz.utc)
 
 
 def _maybe_paper_autotrade(db, user_id: int, ticker: str, ai_result: dict, current_price):
-    """If paper_autotrade_enabled, route Tier-3 BUY/SELL → risk → PaperBroker."""
+    """If paper_autotrade_enabled, route Tier-3 BUY/SELL → risk → broker.
+
+    Broker selection: settings.auto_trade_broker
+      "paper"  → in-DB PaperBroker (no external calls)
+      "alpaca" → AlpacaBroker (Alpaca paper trading API, fills at next open)
+    """
     from ..config import settings as _settings
     if not _settings.paper_autotrade_enabled:
         return
@@ -30,7 +35,13 @@ def _maybe_paper_autotrade(db, user_id: int, ticker: str, ai_result: dict, curre
     from ..services.broker.base import OrderRequest
     import uuid
 
-    broker = get_broker("paper", db)
+    broker_mode = _settings.auto_trade_broker  # "paper" or "alpaca"
+    try:
+        broker = get_broker(broker_mode, db)
+    except Exception as e:
+        logger.error(f"[Autotrade] cannot get broker '{broker_mode}': {e}")
+        return
+
     account = broker.get_account(user_id)
     target_notional = account.equity * _settings.max_position_pct
     qty = int(target_notional / current_price)
@@ -57,8 +68,8 @@ def _maybe_paper_autotrade(db, user_id: int, ticker: str, ai_result: dict, curre
     )
     result = broker.place_order(req)
     logger.info(
-        f"[Autotrade] {ticker} {side} {qty} → status={result.status} "
-        f"reason={result.reason_rejected or '—'}"
+        f"[Autotrade] [{broker_mode}] {ticker} {side} {qty} "
+        f"→ status={result.status} reason={result.reason_rejected or '—'}"
     )
 
 

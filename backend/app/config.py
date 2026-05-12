@@ -55,16 +55,24 @@ class Settings(BaseSettings):
 
     # Trading + risk management
     paper_trading_enabled: bool = True
-    paper_autotrade_enabled: bool = False   # when True, scheduler executes Tier-3 BUY/SELL on paper
+    paper_autotrade_enabled: bool = False   # flip True to enable auto-trading after each EOD scan
     live_trading_enabled: bool = False      # HARD off — second guard prevents WebullBroker live
-    paper_starting_cash: float = 100_000.0  # USD seed for new paper accounts
+    auto_trade_broker: str = "paper"        # "paper" (in-DB sim) or "alpaca" (Alpaca paper API)
+    paper_starting_cash: float = 100_000.0  # USD seed for new in-DB paper accounts
     max_position_pct: float = 0.10          # any single position <= 10% of equity
     correlation_cap: float = 0.25           # any commodity-group bucket <= 25% of equity
     daily_loss_kill_pct: float = 0.03       # kill switch trips at -3% intraday
-    slippage_bps: int = 5                   # paper broker fill slippage (basis points)
-    quote_max_staleness_seconds: int = 300  # reject orders if quote older than this
+    slippage_bps: int = 5                   # in-DB paper broker fill slippage (basis points)
+    # EOD scan processes tickers sequentially; last ticker's quote may be ~20 min old.
+    # 3600s (1h) gives safe headroom without accepting truly stale data.
+    quote_max_staleness_seconds: int = 3600
 
-    # Webull (scaffolded; not used until PR10)
+    # Alpaca paper trading
+    alpaca_api_key: str = ""
+    alpaca_api_secret: str = ""
+    alpaca_paper: bool = True               # HARD True — live endpoint blocked until separate PR
+
+    # Webull (scaffolded; not used until separate PR)
     webull_app_key: str = ""
     webull_app_secret: str = ""
 

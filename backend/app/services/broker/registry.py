@@ -10,19 +10,22 @@ from .paper_broker import PaperBroker
 from .base import BrokerAdapter
 
 
-BrokerMode = Literal["paper", "webull"]
+BrokerMode = Literal["paper", "alpaca", "webull"]
 
 
 def get_broker(mode: BrokerMode, db: Session) -> BrokerAdapter:
     if mode == "paper":
         return PaperBroker(db)
+    if mode == "alpaca":
+        if not settings.alpaca_api_key:
+            raise ValueError("ALPACA_API_KEY not set — configure it in .env")
+        from .alpaca_broker import AlpacaBroker
+        return AlpacaBroker(db)
     if mode == "webull":
-        # Webull adapter lands in PR10 with NotImplementedError stubs.
-        # Defense in depth: do not even instantiate when live trading is off.
         if not settings.live_trading_enabled:
             raise PermissionError(
                 "Webull broker disabled: settings.live_trading_enabled=False"
             )
-        from .webull_broker import WebullBroker  # imported lazily
+        from .webull_broker import WebullBroker
         return WebullBroker(db)
     raise ValueError(f"unknown broker mode: {mode}")
