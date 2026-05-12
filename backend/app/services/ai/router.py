@@ -12,7 +12,7 @@ import json
 from typing import Optional, Dict, Any, Literal
 from dataclasses import dataclass, field
 
-from ..ai.adapters import claude_adapter
+from ..ai.adapters import claude_adapter, deepseek_adapter
 from ...utils.cache import stock_cache
 from ...config import settings
 
@@ -130,11 +130,104 @@ def run(req: AIRequest, *, tier: Tier) -> Optional[Dict[str, Any]]:
             user_profile=req.user_profile,
         )
     elif tier == "t1":
-        # DeepSeek adapter wired in PR5
-        return None
+        cs = req.commodity_signals or {}
+        result = deepseek_adapter.screen(
+            ticker=req.ticker,
+            technical=req.technical,
+            commodity_score=cs.get("score"),
+            drivers=cs.get("drivers"),
+        )
     else:
         return None
 
     if result is not None:
         stock_cache.set(key, result, settings.ai_cache_ttl)
     return result
+
+
+# ── Promotion logic ────────────────────────────────────────────────────────
+
+def should_promote_to_t2(
+    *,
+    tier1_result: Optional[dict],
+    technical: Optional[dict],
+    commodity_signals: Optional[dict],
+    multi_provider: Optional[dict],
+    prev_score: Optional[int] = None,
+) -> tuple[bool, list[str]]:
+    """Returns (promote, reasons). Tier 2 only fires if at least one trigger hits."""
+    reasons: list[str] = []
+
+    if tier1_result and tier1_result.get("verdict") == "candidate":
+        reasons.append("tier1 verdict=candidate")
+
+    # Score sign flip
+    if commodity_signals and prev_score is not None:
+        cur = commodity_signals.get("score") or 0
+        if (cur > 0) != (prev_score > 0) and abs(cur - prev_score) > 5:
+            reasons.append(f"score flipped {prev_score:+d} -> {cur:+d}")
+
+    # RSI cross 30 or 70
+    if technical and technical.get("rsi") is not None:
+        rsi = technical["rsi"]
+        if rsi <= 30 or rsi >= 70:
+            reasons.append(f"rsi extreme ({rsi:.1f})")
+
+    # MACD cross
+    if technical and technical.get("macd_hist") is not None:
+        # If hist is near zero and macd magnitude is non-trivial, treat as recent cross
+        if abs(technical["macd_hist"]) < 0.05 and abs(technical.get("macd") or 0) > 0.1:
+            reasons.append("macd near signal-line cross")
+
+    # Bollinger break
+    if technical and technical.get("bb_upper") is not None:
+        last_close = technical.get("price") or technical.get("close")
+        if last_close is not None:
+            if last_close >= technical["bb_upper"]:
+                reasons.append("bollinger upper break")
+            elif last_close <= technical.get("bb_lower", float("inf")):
+                reasons.append("bollinger lower break")
+
+    # COT z-score extreme
+    cot = (commodity_signals or {}).get("components", {}).get("cot") or {}
+    z = cot.get("z_score_52w")
+    if z is not None and abs(z) > 2:
+        reasons.append(f"cot z-score extreme ({z:+.2f})")
+
+    # Cross-provider price disagreement
+    if multi_provider:
+        prices = [
+            q.get("price") for q in (multi_provider.get("quotes") or {}).values()
+            if q and q.get("price") and not q.get("error")
+        ]
+        if len(prices) >= 2:
+            spread = (max(prices) - min(prices)) / max(prices)
+            if spread > 0.005:
+                reasons.append(f"provider spread {spread*100:.2f}%")
+
+    return (bool(reasons), reasons)
+
+
+def should_promote_to_t3(
+    *,
+    tier2_result: Optional[dict],
+    risk_precheck_ok: bool,
+) -> tuple[bool, list[str]]:
+    """Tier 3 only if all conditions met."""
+    reasons: list[str] = []
+    if not tier2_result:
+        return (False, ["no tier2 result"])
+    if tier2_result.get("error"):
+        return (False, [f"tier2 error: {tier2_result['error']}"])
+
+    confidence = tier2_result.get("confidence") or 0
+    rec = (tier2_result.get("recommendation") or "").upper()
+
+    if confidence < 70:
+        reasons.append(f"confidence {confidence} < 70")
+    if rec not in ("BUY", "SELL"):
+        reasons.append(f"recommendation {rec} not actionable")
+    if not risk_precheck_ok:
+        reasons.append("risk pre-check failed")
+
+    return (not reasons, reasons or ["all gates passed"])

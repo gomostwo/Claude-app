@@ -26,6 +26,9 @@ def run_scheduled_scan():
         send_ai_recommendation_notification,
     )
     from ..services.data_ingestion import ingest_ticker, get_latest_multi_provider
+    from ..services.stock_data import COMMODITY_TICKERS
+    from ..services import commodity_signals
+    from ..services.ai.router import AIRequest, run as ai_run, should_promote_to_t2, should_promote_to_t3
 
     logger.info(f"[Scheduler] Starting market scan at {datetime.utcnow().isoformat()}")
     db = SessionLocal()
@@ -66,19 +69,74 @@ def run_scheduled_scan():
                     if technical and technical.get("rsi") is not None:
                         check_rsi_alerts(db, user.id, item, technical["rsi"], user.telegram_chat_id)
 
-                    # Run screener — only do AI analysis on signal tickers
-                    signals = run_screener(ticker)
-                    if signals:
-                        fundamental = compute_fundamental_data(ticker)
-                        multi_provider = get_latest_multi_provider(db, ticker)
-                        ai_result = run_ai_analysis(
-                            ticker, technical, fundamental, user_profile,
-                            multi_provider=multi_provider,
+                    is_commodity = ticker in COMMODITY_TICKERS
+                    multi_provider = get_latest_multi_provider(db, ticker)
+                    cs_snapshot = commodity_signals.commodity_score(db, ticker) if is_commodity else None
+
+                    # ── Tier 1: cheap screener (DeepSeek) ──────────────────
+                    base_req = AIRequest(
+                        ticker=ticker,
+                        technical=technical,
+                        multi_provider=multi_provider,
+                        commodity_signals=cs_snapshot,
+                        user_profile=user_profile,
+                    )
+                    t1 = ai_run(base_req, tier="t1") if is_commodity else None
+                    promote_t2, reasons_t2 = should_promote_to_t2(
+                        tier1_result=t1,
+                        technical=technical,
+                        commodity_signals=cs_snapshot,
+                        multi_provider=multi_provider,
+                    )
+                    # Non-commodity tickers still fall back to the legacy rule-based screener
+                    if not is_commodity:
+                        promote_t2 = bool(run_screener(ticker))
+                        reasons_t2 = ["legacy screener hit"] if promote_t2 else []
+
+                    if not promote_t2:
+                        continue
+
+                    logger.info(f"[Scheduler] {ticker} → Tier2 ({', '.join(reasons_t2)})")
+
+                    # ── Tier 2: Haiku analysis ─────────────────────────────
+                    fundamental = compute_fundamental_data(ticker)
+                    t2_req = AIRequest(
+                        ticker=ticker,
+                        technical=technical,
+                        fundamental=fundamental,
+                        multi_provider=multi_provider,
+                        commodity_signals=cs_snapshot,
+                        user_profile=user_profile,
+                        purpose="analysis",
+                    )
+                    t2 = ai_run(t2_req, tier="t2")
+                    if not t2:
+                        continue
+
+                    # ── Tier 3 gate ────────────────────────────────────────
+                    # Risk pre-check stub returns True until PR6 lands.
+                    promote_t3, reasons_t3 = should_promote_to_t3(
+                        tier2_result=t2,
+                        risk_precheck_ok=True,
+                    )
+                    if not promote_t3:
+                        logger.info(f"[Scheduler] {ticker} → Tier2 stops ({', '.join(reasons_t3)})")
+                        # Tier 2 verdict still useful for notification, even if not commit-grade
+                        send_ai_recommendation_notification(
+                            db, user.id, ticker, t2, current_price, user.telegram_chat_id
                         )
-                        if ai_result:
-                            send_ai_recommendation_notification(
-                                db, user.id, ticker, ai_result, current_price, user.telegram_chat_id
-                            )
+                        continue
+
+                    logger.info(f"[Scheduler] {ticker} → Tier3")
+                    ai_result = run_ai_analysis(
+                        ticker, technical, fundamental, user_profile,
+                        multi_provider=multi_provider,
+                        commodity_signals_snapshot=cs_snapshot,
+                    )
+                    if ai_result:
+                        send_ai_recommendation_notification(
+                            db, user.id, ticker, ai_result, current_price, user.telegram_chat_id
+                        )
 
                 except Exception as e:
                     logger.error(f"[Scheduler] Error processing {item.ticker} for user {user.id}: {e}")
