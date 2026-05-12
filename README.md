@@ -4,15 +4,16 @@ A full-stack app that monitors **all US stocks (S&P 500 + NASDAQ 100 + Dow 30)**
 
 ## Features
 
-- **Real-time monitoring** — Tracks S&P 500, NASDAQ 100, Dow 30 + Gold (GC=F), Silver (SI=F), WTI Oil (CL=F), Brent Oil (BZ=F), Natural Gas (NG=F)
-- **Technical analysis** — RSI, MACD, Bollinger Bands, SMA/EMA (20/50/200), volume analysis
-- **Fundamental analysis** — P/E, EPS, D/E ratio, revenue growth, profit margin, beta (stocks only)
-- **AI recommendations** — Claude claude-sonnet-4-6 generates personalized BUY/SELL/HOLD with reasoning
-- **Smart screener** — Rule-based pre-filter (RSI extremes, MACD crossover, SMA cross, volume spike)
-- **Telegram notifications** — Instant alerts for price thresholds, RSI signals, AI recommendations
-- **User profiles** — Budget, investment style, time horizon, risk tolerance saved and used by AI
-- **Scheduled scans** — Auto-runs every 15 min during US market hours (Mon–Fri 9:30–16:00 ET)
-- **Manual analysis** — Trigger analysis on any ticker instantly
+- **Stock + commodity-ETF coverage** — S&P 500 + NASDAQ 100 + Dow 30 stocks, plus US commodity ETFs **GLD, SLV, USO, BNO, UNG, DBC** (tradeable through Webull Thailand's US stocks segment)
+- **Multi-provider data ingestion** — yfinance + Finnhub + Twelve Data + FMP + Alpha Vantage. Each provider's quote and fundamentals stored separately for AI cross-validation
+- **Commodity-specific signals** — EIA (oil/gas official prices), FRED (DXY, real yields, inflation breakevens), CFTC COT (managed-money positioning); composite commodity_score with drivers
+- **Tiered AI router** — DeepSeek V3 screens 600+ tickers cheaply → Claude Haiku 4.5 analyzes promoted candidates → Claude Sonnet 4.6 produces commit-grade recommendations only on actionable, risk-approved candidates. Anthropic prompt caching cuts cost ~85%
+- **Paper trading** — Full broker simulation with realistic slippage; fills persisted to DB
+- **Risk management** — Deterministic kill switch, position cap, correlation cap across commodity groups; every order — paper or live — passes through identical invariants
+- **Backtester** — Daily-bar replay using the same signal + risk + paper-broker code as live
+- **Webull broker scaffold** — adapter slot in place, kept disabled (NotImplementedError) until OpenAPI key is confirmed and `LIVE_TRADING_ENABLED=true` is set
+- **Telegram notifications** — Price thresholds, RSI signals, AI recommendations
+- **Scheduled scans** — Every 15 min during US market hours (Mon–Fri 09:30–16:00 ET)
 
 ## Quick Start
 
@@ -42,9 +43,26 @@ TWELVEDATA_API_KEY=      # https://twelvedata.com/pricing      — 800 req/day
 FMP_API_KEY=             # https://site.financialmodelingprep.com/developer — 250 req/day
 ALPHAVANTAGE_API_KEY=    # https://www.alphavantage.co/support/#api-key     — 25 req/day
 ```
-Each configured provider is queried during every scan and stored as a
-separate row in `provider_quotes` / `provider_fundamentals`. The AI sees
-all sources side-by-side and cross-validates.
+
+Optional commodity-specific data (free official US gov't sources):
+```env
+EIA_API_KEY=             # https://www.eia.gov/opendata/register.php      — oil/gas spot prices
+FRED_API_KEY=            # https://fred.stlouisfed.org/docs/api/api_key.html — DXY, real yields, inflation
+# CFTC COT data is public CSV — no key required
+```
+
+Tier 1 AI screener (ultra-cheap fan-out):
+```env
+DEEPSEEK_API_KEY=        # https://platform.deepseek.com/api_keys
+```
+
+Webull broker (NOT yet wired — apply for OpenAPI access; setting the
+keys alone will NOT enable live trading):
+```env
+WEBULL_APP_KEY=
+WEBULL_APP_SECRET=
+LIVE_TRADING_ENABLED=false   # keep false until OpenAPI is wired in a future PR
+```
 
 ### 3. Start the app
 ```bash
