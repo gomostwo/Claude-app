@@ -8,6 +8,58 @@ logger = logging.getLogger(__name__)
 scheduler = BackgroundScheduler(timezone=pytz.utc)
 
 
+def _maybe_paper_autotrade(db, user_id: int, ticker: str, ai_result: dict, current_price):
+    """If paper_autotrade_enabled, route Tier-3 BUY/SELL → risk → PaperBroker.
+
+    Sizing: target notional = max_position_pct * equity. Risk manager
+    enforces the cap independently as defense in depth.
+    """
+    from ..config import settings as _settings
+    if not _settings.paper_autotrade_enabled:
+        return
+    rec = (ai_result.get("recommendation") or "").upper()
+    if rec not in ("BUY", "SELL"):
+        return
+    if not current_price or current_price <= 0:
+        return
+
+    from ..services.broker.registry import get_broker
+    from ..services.broker.base import OrderRequest
+    import uuid
+
+    broker = get_broker("paper", db)
+    account = broker.get_account(user_id)
+    target_notional = account.equity * _settings.max_position_pct
+    qty = int(target_notional / current_price)
+    if qty <= 0:
+        return
+
+    side = "buy" if rec == "BUY" else "sell"
+    # For sells, don't size larger than current position
+    if side == "sell":
+        positions = {p.ticker: p.qty for p in broker.list_positions(user_id)}
+        if positions.get(ticker, 0) <= 0:
+            logger.info(f"[Autotrade] {ticker} SELL skipped: no long position")
+            return
+        qty = min(qty, int(positions[ticker]))
+        if qty <= 0:
+            return
+
+    req = OrderRequest(
+        user_id=user_id,
+        ticker=ticker,
+        side=side,
+        qty=qty,
+        type="market",
+        client_order_id=f"auto-{ticker}-{uuid.uuid4().hex[:8]}",
+    )
+    result = broker.place_order(req)
+    logger.info(
+        f"[Autotrade] {ticker} {side} {qty} → status={result.status} "
+        f"reason={result.reason_rejected or '—'}"
+    )
+
+
 def run_scheduled_scan():
     """
     Scheduled scan: analyze each user's watchlist, check alerts, send Telegram notifications.
@@ -137,6 +189,7 @@ def run_scheduled_scan():
                         send_ai_recommendation_notification(
                             db, user.id, ticker, ai_result, current_price, user.telegram_chat_id
                         )
+                        _maybe_paper_autotrade(db, user.id, ticker, ai_result, current_price)
 
                 except Exception as e:
                     logger.error(f"[Scheduler] Error processing {item.ticker} for user {user.id}: {e}")

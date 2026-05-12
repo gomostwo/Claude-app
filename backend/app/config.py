@@ -53,6 +53,7 @@ class Settings(BaseSettings):
 
     # Trading + risk management
     paper_trading_enabled: bool = True
+    paper_autotrade_enabled: bool = False   # when True, scheduler executes Tier-3 BUY/SELL on paper
     live_trading_enabled: bool = False      # HARD off — second guard prevents WebullBroker live
     paper_starting_cash: float = 100_000.0  # USD seed for new paper accounts
     max_position_pct: float = 0.10          # any single position <= 10% of equity
