@@ -15,6 +15,7 @@ class ProviderQuote(Base):
     change = Column(Float, nullable=True)
     change_percent = Column(Float, nullable=True)
     volume = Column(Float, nullable=True)
+    aum = Column(Float, nullable=True)               # ETF assets-under-management snapshot, for flow signal
     raw_json = Column(Text, nullable=False)          # full provider payload for AI
     fetched_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     error = Column(String, nullable=True)            # populated when fetch failed
