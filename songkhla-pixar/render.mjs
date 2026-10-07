@@ -11,6 +11,8 @@ const outDir = process.argv[2] || path.join(here, 'frames');
 const fps = +(process.argv[3] || 30);
 const arg = k => (process.argv.find(a => a.startsWith(`--${k}=`)) || '').split('=')[1];
 const only = arg('only');
+const scale = arg('scale') || '.75';
+const off = arg('off') || '';
 await mkdir(outDir, { recursive: true });
 
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.woff2': 'font/woff2' };
@@ -26,9 +28,10 @@ const port = server.address().port;
 
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const page = await browser.newPage({ viewport: { width: 1080, height: 1920 }, deviceScaleFactor: 1 });
+page.setDefaultTimeout(0);
 page.on('console', m => m.type() === 'error' && console.log('console:', m.text()));
 page.on('pageerror', e => console.log('pageerror:', e.message));
-await page.goto(`http://localhost:${port}/index.html?render`);
+await page.goto(`http://localhost:${port}/index.html?render&scale=${scale}&off=${off}`);
 await page.waitForFunction(() => window.READY, null, { timeout: 120000 });
 const total = await page.evaluate(() => window.TOTAL);
 

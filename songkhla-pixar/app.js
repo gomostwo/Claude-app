@@ -8,7 +8,9 @@ import { OutputPass } from './vendor/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from './vendor/jsm/postprocessing/ShaderPass.js';
 import { RoundedBoxGeometry } from './vendor/jsm/geometries/RoundedBoxGeometry.js';
 
-const W = 1080, H = 1920;
+const SCALE = +(new URLSearchParams(location.search).get('scale') || .75);
+const FLAGS = new URLSearchParams(location.search).get('off') || '';
+const W = Math.round(1080 * SCALE), H = Math.round(1920 * SCALE);
 export const TOTAL = 75;
 
 // ---------------------------------------------------------------- helpers
@@ -28,7 +30,7 @@ renderer.setSize(W, H, false);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = .92;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.VSMShadowMap;
+renderer.shadowMap.type = FLAGS.includes('vsm') ? THREE.PCFSoftShadowMap : THREE.VSMShadowMap;
 const pmrem = new THREE.PMREMGenerator(renderer);
 
 // soft "clay / plastic" Pixar-ish materials
@@ -135,7 +137,7 @@ function baseScene(o) {
   const key = new THREE.DirectionalLight(L.color ?? '#fff0d8', L.dir ?? 2.6);
   key.position.copy(L.pos ?? V(30, 50, 20)); key.castShadow = true;
   const a = L.area ?? 30; Object.assign(key.shadow.camera, { left: -a, right: a, top: a, bottom: -a, near: 1, far: 300 });
-  key.shadow.mapSize.set(2048, 2048); key.shadow.radius = L.soft ?? 8; key.shadow.blurSamples = 16; key.shadow.bias = -.0004;
+  key.shadow.mapSize.set(1024, 1024); key.shadow.radius = (L.soft ?? 8) / 2; key.shadow.blurSamples = 16; key.shadow.bias = -.0004;
   if (L.target) key.target.position.copy(L.target);
   scene.add(key, key.target);
   const rim = new THREE.DirectionalLight(L.rimColor ?? '#bfe0ff', L.rim ?? 1.1); rim.position.copy(L.rimPos ?? V(-20, 25, -40)); scene.add(rim);
@@ -160,14 +162,15 @@ function makeComposer(S) {
   c.addPass(new RenderPass(S.scene, S.cam));
   // depth-based passes must not see sprites (sun glow, labels) or they turn into solid quads
   const hideSprites = pass => { const r = pass.render.bind(pass); pass.render = (...a) => { const hid = []; S.scene.traverse(o => { if (o.isSprite && o.visible) { o.visible = false; hid.push(o); } }); r(...a); hid.forEach(o => o.visible = true); }; return pass; };
-  if (S.ao > 0) {
+  if (S.ao > 0 && !FLAGS.includes('ao')) {
     const ao = hideSprites(new GTAOPass(S.scene, S.cam, W / 2, H / 2));
     ao.blendIntensity = S.ao; ao.updateGtaoMaterial({ radius: S.aoRadius ?? 1.4, distanceExponent: 1.5, thickness: 2, scale: 1.2, samples: 12 });
     ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 12 });
     c.addPass(ao);
+    ao.setSize = (w, h) => GTAOPass.prototype.setSize.call(ao, Math.round(w / 2), Math.round(h / 2)); ao.setSize(W, H);
   }
-  c.addPass(new UnrealBloomPass(new THREE.Vector2(W / 2, H / 2), ...S.bloom));
-  const bokeh = hideSprites(new BokehPass(S.scene, S.cam, { focus: 10, aperture: S.aperture, maxblur: .005 })); c.addPass(bokeh); S.bokeh = bokeh;
+  if (!FLAGS.includes('bloom')) c.addPass(new UnrealBloomPass(new THREE.Vector2(W / 2, H / 2), ...S.bloom));
+  const bokeh = hideSprites(new BokehPass(S.scene, S.cam, { focus: 10, aperture: S.aperture, maxblur: .005 })); if (S.aperture > 0 && !FLAGS.includes('dof')) c.addPass(bokeh); S.bokeh = bokeh;
   c.addPass(new OutputPass());
   c.addPass(new ShaderPass(GradeShader));
   return c;
@@ -382,7 +385,7 @@ function sceneOcean({ cta = false } = {}) {
   const S = baseScene(cta
     ? { top: '#3a1a6e', mid: '#ff9b78', bot: '#8a3a68', sun: { color: '#ffc27a', r: 26 }, sunPos: V(-30, 24, -420), fog: [90, 700], aperture: .0004, bloom: [.35, .4, 1.5],
         light: { color: '#ffb27a', pos: V(-12, 14, -40), dir: 3, sky: '#ffb6c8', ground: '#4a2050', area: 10, rimColor: '#ff9f7a', rimPos: V(-10, 12, -40), rim: 2.2, target: V(0, 1, 0) } }
-    : { top: '#5b86e0', mid: '#ffd2a6', bot: '#ffaf7a', sun: { color: '#fff0c0', r: 24 }, sunPos: V(0, 0, -420), fog: [90, 700], aperture: .00015, bloom: [.3, .4, 1.5],
+    : { top: '#5b86e0', mid: '#ffd2a6', bot: '#ffaf7a', sun: { color: '#fff0c0', r: 24 }, sunPos: V(0, 0, -420), fog: [90, 700], aperture: 0, bloom: [.3, .4, 1.5],
         light: { color: '#ffd8a8', pos: V(-10, 22, -60), dir: 2.4 } });
   const water = makeWater(520, 150, cta ? '#6a4c9c' : '#1f86c4', .32); S.scene.add(water); S.updaters.push(water.userData.update);
   for (const [x, z, r, h] of [[-75, -230, 24, 12], [62, -270, 17, 8], [-18, -340, 13, 6], [115, -190, 10, 5]]) { const i = makeIsland(r, h, cta ? '#5a3d7a' : '#4fae5c', 3); i.position.set(x, 0, z); S.scene.add(i); }
@@ -510,7 +513,7 @@ function sceneSamila() {
 
 function sceneLake() {
   seed = 9;
-  const S = baseScene({ top: '#3a1d6e', mid: '#ffa07a', bot: '#a3497a', sun: { color: '#ffc27a', r: 30 }, sunPos: V(40, 20, -460), fog: [100, 720], aperture: .00025, bloom: [.4, .4, 1.5],
+  const S = baseScene({ top: '#3a1d6e', mid: '#ffa07a', bot: '#a3497a', sun: { color: '#ffc27a', r: 30 }, sunPos: V(40, 20, -460), fog: [100, 720], aperture: 0, bloom: [.4, .4, 1.5],
     light: { color: '#ffae7a', pos: V(30, 20, -80), dir: 2.6, sky: '#ffb3c8', ground: '#3a2050', area: 60, target: V(0, 0, -20), rimColor: '#ff9a8a', rim: 1.6 } });
   const water = makeWater(620, 160, '#7a4a9c', .25); S.scene.add(water); S.updaters.push(water.userData.update);
   for (const [x, z, r, h] of [[-150, -380, 60, 18], [-40, -420, 50, 12], [160, -400, 70, 20], [260, -330, 40, 10]]) { const i = makeIsland(r, h, '#6a3f86', 0); i.position.set(x, 0, z); S.scene.add(i); }
@@ -572,7 +575,7 @@ function facade(color, signText) {
 
 function sceneOldTown() {
   seed = 21;
-  const S = baseScene({ top: '#86c6f5', mid: '#ffe7c2', bot: '#ffe0b0', sun: { color: '#fff1c8', r: 10 }, sunPos: V(-60, 90, -200), fog: [70, 260], aperture: .0004, ao: 1.3, bloom: [.25, .4, 1.3],
+  const S = baseScene({ top: '#86c6f5', mid: '#ffe7c2', bot: '#ffe0b0', sun: { color: '#fff1c8', r: 10 }, sunPos: V(-60, 90, -200), fog: [70, 260], aperture: 0, ao: 1.3, bloom: [.25, .4, 1.3],
     light: { color: '#ffd9a8', pos: V(-22, 26, -8), dir: 3, area: 40, soft: 9, target: V(0, 0, 10), rimPos: V(20, 15, -40), rim: 1.2 } });
   const road = mesh(new THREE.PlaneGeometry(10, 200), mat('#8a807a', { roughness: 1 }), { cast: false }); road.rotation.x = -PI / 2; road.position.z = 10; S.scene.add(road);
   for (const x of [-6.5, 6.5]) { const w = rbox(3, .35, 200, .12, mat('#e2cfac')); w.position.set(x, .17, 10); S.scene.add(w); }
@@ -625,7 +628,7 @@ function windowsTex(lit) {
 
 function sceneHatYai() {
   seed = 45;
-  const S = baseScene({ top: '#0a0a2a', mid: '#4a2280', bot: '#1a0a30', fog: [70, 420], aperture: .0003, ao: .8, bloom: [.8, .5, .7],
+  const S = baseScene({ top: '#0a0a2a', mid: '#4a2280', bot: '#1a0a30', fog: [70, 420], aperture: 0, ao: .8, bloom: [.8, .5, .7],
     light: { color: '#a08aff', pos: V(20, 60, 40), dir: .6, sky: '#7a5aff', ground: '#1a0a30', hemi: .5, env: .6, area: 80, rimColor: '#ff6ab0', rim: 1.2 } });
   const ground = mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshPhysicalMaterial({ color: '#160c2c', roughness: .25, clearcoat: 1 }), { cast: false }); ground.rotation.x = -PI / 2; S.scene.add(ground);
   const stars = new THREE.BufferGeometry(), sp = [];
@@ -659,7 +662,7 @@ function sceneHatYai() {
 
 function sceneFalls() {
   seed = 61;
-  const S = baseScene({ top: '#5fb8e8', mid: '#dff7e6', bot: '#bfe8c8', sun: { color: '#fff8e0', r: 10 }, sunPos: V(80, 160, -200), fog: [50, 320], aperture: .0005, ao: 1.3, bloom: [.25, .4, 1.3],
+  const S = baseScene({ top: '#5fb8e8', mid: '#dff7e6', bot: '#bfe8c8', sun: { color: '#fff8e0', r: 10 }, sunPos: V(80, 160, -200), fog: [50, 320], aperture: 0, ao: 1.3, bloom: [.25, .4, 1.3],
     light: { pos: V(24, 46, 34), dir: 2.6, area: 40, soft: 10, target: V(0, 10, -10), rimPos: V(-20, 30, -50), rim: 1.6 } });
   const ground = mesh(new THREE.PlaneGeometry(400, 400), mat('#4f9f4a', { sheen: .6 }), { cast: false }); ground.rotation.x = -PI / 2; S.scene.add(ground);
   const rock = mat('#8f9a8c', { roughness: .9, sheen: .2 }), moss = mat('#5fae4f', { sheen: 1, sheenColor: col('#dfffa0') });
@@ -738,7 +741,7 @@ function sceneFood() {
 
 function scenePlane() {
   seed = 99;
-  const S = baseScene({ top: '#2d6fe0', mid: '#a8dcff', bot: '#eef8ff', sun: { color: '#fffbe8', r: 14 }, sunPos: V(-150, 120, -300), fog: [80, 520], aperture: .0004, ao: 1, bloom: [.25, .4, 1.3],
+  const S = baseScene({ top: '#2d6fe0', mid: '#a8dcff', bot: '#eef8ff', sun: { color: '#fffbe8', r: 14 }, sunPos: V(-150, 120, -300), fog: [80, 520], aperture: 0, ao: 1, bloom: [.25, .4, 1.3],
     light: { pos: V(-30, 50, 20), dir: 2.8, area: 18, soft: 10, rimPos: V(30, 10, -30), rim: 1.8 } });
   const white = gloss('#ffffff', { roughness: .3 }), blue = gloss('#2d6fe0'), yellow = gloss('#ffc83a');
   const plane = new THREE.Group();
