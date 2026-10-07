@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>Songkhla Pixar</title>
+<meta name="viewport" content="width=1080">
+<style>
+@font-face{font-family:K;src:url(fonts/kanit-thai-400-normal.woff2) format('woff2');font-weight:400;unicode-range:U+0E01-0E5B,U+200C-200D,U+25CC}
+@font-face{font-family:K;src:url(fonts/kanit-thai-600-normal.woff2) format('woff2');font-weight:600;unicode-range:U+0E01-0E5B,U+200C-200D,U+25CC}
+@font-face{font-family:K;src:url(fonts/kanit-thai-800-normal.woff2) format('woff2');font-weight:800;unicode-range:U+0E01-0E5B,U+200C-200D,U+25CC}
+@font-face{font-family:K;src:url(fonts/kanit-thai-900-normal.woff2) format('woff2');font-weight:900;unicode-range:U+0E01-0E5B,U+200C-200D,U+25CC}
+@font-face{font-family:K;src:url(fonts/kanit-latin-400-normal.woff2) format('woff2');font-weight:400;unicode-range:U+0000-00FF,U+2000-206F,U+2190-21FF}
+@font-face{font-family:K;src:url(fonts/kanit-latin-600-normal.woff2) format('woff2');font-weight:600;unicode-range:U+0000-00FF,U+2000-206F,U+2190-21FF}
+@font-face{font-family:K;src:url(fonts/kanit-latin-800-normal.woff2) format('woff2');font-weight:800;unicode-range:U+0000-00FF,U+2000-206F,U+2190-21FF}
+@font-face{font-family:K;src:url(fonts/kanit-latin-900-normal.woff2) format('woff2');font-weight:900;unicode-range:U+0000-00FF,U+2000-206F,U+2190-21FF}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#071a2b}
+body{font-family:K,'Noto Color Emoji',sans-serif;color:#fff;-webkit-font-smoothing:antialiased}
+#c{position:absolute;inset:0;width:1080px;height:1920px}
+#fade{position:absolute;inset:0;background:#0a0f1e;z-index:40;opacity:1}
+.e{font-family:'Noto Color Emoji'}
+
+.ov{position:absolute;inset:0;opacity:0;animation:vis var(--d) linear var(--s) both;z-index:20}
+@keyframes vis{0%{opacity:0}5%{opacity:1}95%{opacity:1}100%{opacity:0}}
+.up{animation:up .8s cubic-bezier(.2,.9,.25,1) calc(var(--s) + var(--t,0s)) both}
+.pop{animation:pop .7s cubic-bezier(.3,1.6,.5,1) calc(var(--s) + var(--t,0s)) both}
+.lft{animation:lft .8s cubic-bezier(.2,.9,.25,1) calc(var(--s) + var(--t,0s)) both}
+@keyframes up{from{opacity:0;transform:translateY(70px)}to{opacity:1;transform:none}}
+@keyframes pop{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:none}}
+@keyframes lft{from{opacity:0;transform:translateX(-120px)}to{opacity:1;transform:none}}
+
+.top{position:absolute;left:64px;right:64px;top:170px}
+.bot{position:absolute;left:0;right:0;bottom:0;padding:200px 64px 130px;background:linear-gradient(180deg,rgba(5,15,35,0),rgba(5,15,35,.78) 32%,rgba(5,15,35,.92))}
+.toptint{position:absolute;left:0;right:0;top:0;height:640px;background:linear-gradient(180deg,rgba(5,15,35,.55),rgba(5,15,35,0))}
+.chip{display:inline-block;padding:12px 30px;border-radius:999px;font-size:32px;font-weight:600;background:#ffd86b;color:#3a2200}
+.h1{font-size:128px;font-weight:900;line-height:1.05;text-shadow:0 6px 30px rgba(0,0,0,.45)}
+.h2{font-size:100px;font-weight:900;line-height:1.08;text-shadow:0 6px 30px rgba(0,0,0,.45)}
+.sub{font-size:44px;line-height:1.35;text-shadow:0 3px 14px rgba(0,0,0,.5)}
+.hl{color:#ffd86b}
+.glass{background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.28);border-radius:36px;backdrop-filter:blur(10px)}
+.list{display:flex;flex-direction:column;gap:18px;margin-top:30px}
+.item{display:flex;align-items:center;gap:26px;padding:22px 32px;font-size:40px;font-weight:600}
+.item .e{font-size:58px;line-height:1}
+.item small{display:block;font-size:30px;font-weight:400;opacity:.85}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:28px}
+.stat{padding:24px 30px}
+.stat b{display:block;font-size:84px;font-weight:900;color:#ffd86b;line-height:1.05}
+.stat b small{font-size:38px;color:#fff;margin-left:8px}
+.stat span{font-size:32px;opacity:.9}
+.brand{position:absolute;top:56px;left:56px;z-index:30;padding:14px 30px;border-radius:999px;background:rgba(0,0,0,.35);backdrop-filter:blur(8px);font-size:30px;font-weight:600;letter-spacing:4px}
+.progress{position:absolute;left:56px;right:56px;bottom:56px;height:10px;border-radius:9px;background:rgba(255,255,255,.22);overflow:hidden;z-index:30}
+.progress i{display:block;height:100%;background:linear-gradient(90deg,#ffd86b,#ff7a59);transform-origin:left;animation:prog 75s linear 0s both}
+@keyframes prog{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.center{position:absolute;left:0;right:0;text-align:center}
+.mega{font-size:280px;font-weight:900;line-height:1;text-shadow:0 14px 60px rgba(120,40,0,.55)}
+.btn{display:inline-block;padding:28px 60px;border-radius:999px;background:#fff;color:#c2185b;font-size:50px;font-weight:900;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+
+<!-- 1 intro -->
+<div class="ov" style="--s:0s;--d:6s">
+  <div class="center" style="top:240px;text-shadow:0 6px 30px rgba(60,20,0,.6)">
+    <div class="sub up" style="--t:.4s;font-size:60px;font-weight:600">ยินดีต้อนรับสู่</div>
+    <div class="mega pop" style="--t:.8s">สงขลา</div>
+    <div class="up" style="--t:1.4s;font-size:52px;letter-spacing:34px;font-weight:600;padding-left:34px">SONGKHLA</div>
+    <div class="up" style="--t:2s;margin-top:40px"><span class="glass" style="background:rgba(10,40,80,.55);display:inline-block;padding:20px 46px;font-size:44px;font-weight:600;border-radius:999px">🌊 เมืองสองทะเล · เสน่ห์ปักษ์ใต้ 🌴</span></div>
+  </div>
+</div>
+
+<!-- 2 map + stats -->
+<div class="ov" style="--s:6s;--d:7s">
+  <div class="toptint"></div>
+  <div class="top"><span class="chip up" style="--t:.2s">🗺️ รู้จักสงขลา</span><div class="h2 up" style="--t:.4s;margin-top:18px">สงขลา<span class="hl">ในตัวเลข</span></div></div>
+  <div class="bot">
+    <div class="stats">
+      <div class="stat glass pop" style="--t:1s"><b><span data-count="7394" data-at="7">0</span><small>ตร.กม.</small></b><span>พื้นที่จังหวัด</span></div>
+      <div class="stat glass pop" style="--t:1.3s"><b><span data-count="16" data-at="7.3">0</span><small>อำเภอ</small></b><span>เมืองเก่า + เมืองเศรษฐกิจ</span></div>
+      <div class="stat glass pop" style="--t:1.6s"><b>~<span data-count="1.4" data-dec="1" data-at="7.6">0</span><small>ล้านคน</small></b><span>ประชากร</span></div>
+      <div class="stat glass pop" style="--t:1.9s"><b><span data-count="2" data-at="7.9">0</span><small>ทะเล</small></b><span>อ่าวไทย + ทะเลสาบสงขลา</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- 3 samila -->
+<div class="ov" style="--s:13s;--d:7s">
+  <div class="toptint"></div>
+  <div class="top"><span class="chip up" style="--t:.3s">📍 ห้ามพลาด #1</span><div class="h2 up" style="--t:.5s;margin-top:18px">หาดสมิหลา</div><div class="sub up" style="--t:.7s">บ้านของ <b class="hl">"นางเงือกทอง"</b> สัญลักษณ์คู่เมือง</div></div>
+  <div class="bot"><div class="list">
+    <div class="item glass lft" style="--t:1.4s"><span class="e">🌅</span><div>ชมพระอาทิตย์ขึ้นริมอ่าวไทย</div></div>
+    <div class="item glass lft" style="--t:1.7s"><span class="e">🏝️</span><div>วิวเกาะหนู–เกาะแมว กลางทะเล</div></div>
+  </div></div>
+</div>
+
+<!-- 4 lake -->
+<div class="ov" style="--s:20s;--d:7s">
+  <div class="toptint"></div>
+  <div class="top"><span class="chip up" style="--t:.3s">💜 โรแมนติกยามเย็น #2</span><div class="h2 up" style="--t:.5s;margin-top:18px">ทะเลสาบสงขลา</div><div class="sub up" style="--t:.7s">ทะเลสาบธรรมชาติ <b class="hl">ใหญ่ที่สุดในไทย</b></div></div>
+  <div class="bot"><div class="list">
+    <div class="item glass lft" style="--t:1.4s"><span class="e">🌉</span><div>สะพานติณสูลานนท์ ยาว ~<span data-count="2.6" data-dec="1" data-at="21.4">0</span> กม.<small>ทอดยาวข้ามทะเลสาบสู่เกาะยอ</small></div></div>
+    <div class="item glass lft" style="--t:1.8s"><span class="e">🧵</span><div>ผ้าทอเกาะยอ & ซีฟู้ดสด<small>ร้านอาหารริมน้ำวิวพระอาทิตย์ตก</small></div></div>
+  </div></div>
+</div>
+
+<!-- 5 old town -->
+<div class="ov" style="--s:27s;--d:7s">
+  <div class="toptint"></div>
+  <div class="top"><span class="chip up" style="--t:.3s;background:#e53935;color:#fff">🏮 ย้อนวันวาน #3</span><div class="h2 up" style="--t:.5s;margin-top:18px">เมืองเก่าสงขลา</div><div class="sub up" style="--t:.7s">ย่าน <b class="hl">นครนอก – นครใน – นางงาม</b></div></div>
+  <div class="bot"><div class="list">
+    <div class="item glass lft" style="--t:1.4s"><span class="e">🏛️</span><div>ตึกชิโน-โปรตุกีส อายุนับร้อยปี</div></div>
+    <div class="item glass lft" style="--t:1.7s"><span class="e">🎨</span><div>สตรีทอาร์ต คาเฟ่ & ขนมพื้นเมือง</div></div>
+  </div></div>
+</div>
+
+<!-- 6 hat yai -->
+<div class="ov" style="--s:34s;--d:7s">
+  <div class="top"><span class="chip up" style="--t:.3s;background:#ff2d87;color:#fff">🌃 เมืองไม่หลับ #4</span><div class="h2 up" style="--t:.5s;margin-top:18px;text-shadow:0 0 20px #ff2d87,0 0 50px #ff2d87">หาดใหญ่</div><div class="sub up" style="--t:.7s">ศูนย์กลางเศรษฐกิจภาคใต้ · กิน ช้อป เที่ยว</div></div>
+  <div class="bot"><div class="list">
+    <div class="item glass lft" style="--t:1.4s"><span class="e">🛍️</span><div>ตลาดกิมหยง<small>ของฝาก ขนม ของนำเข้าเพียบ</small></div></div>
+    <div class="item glass lft" style="--t:1.7s"><span class="e">🛶</span><div>ตลาดน้ำคลองแห<small>ตลาดน้ำยามเย็น ของกินริมคลอง</small></div></div>
+  </div></div>
+</div>
+
+<!-- 7 falls -->
+<div class="ov" style="--s:41s;--d:7s">
+  <div class="toptint"></div>
+  <div class="top"><span class="chip up" style="--t:.3s;background:#8ef0b5;color:#06281a">🌿 สายธรรมชาติ #5</span><div class="h2 up" style="--t:.5s;margin-top:18px">น้ำตกโตนงาช้าง</div><div class="sub up" style="--t:.7s">น้ำตก <b class="hl">7 ชั้น</b> กลางผืนป่าเขียวขจี</div></div>
+  <div class="bot"><div class="list">
+    <div class="item glass lft" style="--t:1.5s"><span class="e">⛰️</span><div>เขาตังกวน<small>จุดชมวิวเมืองสงขลามุมกว้าง</small></div></div>
+  </div></div>
+</div>
+
+<!-- 8 food -->
+<div class="ov" style="--s:48s;--d:7s">
+  <div class="top"><span class="chip up" style="--t:.3s;background:#fff;color:#c0392b">😋 สายกิน #6</span><div class="h1 up" style="--t:.5s;margin-top:18px">อร่อย<span style="color:#fff3c4">ต้องลอง</span></div></div>
+</div>
+
+<!-- 9 route -->
+<div class="ov" style="--s:55s;--d:7s">
+  <div class="toptint"></div>
+  <div class="top"><span class="chip up" style="--t:.3s">🧭 ทริปแนะนำ</span><div class="h2 up" style="--t:.5s;margin-top:18px">3 วัน 2 คืน</div></div>
+  <div class="bot"><div class="list">
+    <div class="item glass lft" style="--t:1.1s"><span class="e">1️⃣</span><div>หาดใหญ่<small>ตลาดกิมหยง → ตลาดน้ำคลองแห</small></div></div>
+    <div class="item glass lft" style="--t:2.6s"><span class="e">2️⃣</span><div>เมืองสงขลา<small>ติ่มซำ → เมืองเก่า → หาดสมิหลา → เขาตังกวน</small></div></div>
+    <div class="item glass lft" style="--t:4.2s"><span class="e">3️⃣</span><div>เกาะยอ<small>ข้ามสะพานติณฯ → ผ้าทอ → ซีฟู้ดริมทะเลสาบ</small></div></div>
+  </div></div>
+</div>
+
+<!-- 10 travel -->
+<div class="ov" style="--s:62s;--d:6s">
+  <div class="toptint"></div>
+  <div class="top"><span class="chip up" style="--t:.3s">🧳 เดินทางง่าย</span><div class="h2 up" style="--t:.5s;margin-top:18px">ไปสงขลา<span class="hl">ยังไงดี?</span></div></div>
+  <div class="bot"><div class="list">
+    <div class="item glass lft" style="--t:1s"><span class="e">✈️</span><div>บินตรงสู่หาดใหญ่<small>จากกรุงเทพฯ ประมาณ 1.5 ชั่วโมง</small></div></div>
+    <div class="item glass lft" style="--t:1.3s"><span class="e">🚆</span><div>รถไฟสายใต้<small>ปลายทางสถานีชุมทางหาดใหญ่</small></div></div>
+    <div class="item glass lft" style="--t:1.6s"><span class="e">📅</span><div>ช่วงที่เหมาะ ม.ค. – ก.ย.<small>เลี่ยงฝนชุก ต.ค. – ธ.ค.</small></div></div>
+  </div></div>
+</div>
+
+<!-- 11 cta -->
+<div class="ov" style="--s:68s;--d:7s">
+  <div class="center" style="top:250px">
+    <div class="sub up" style="--t:.4s;font-size:58px;font-weight:600">มาครั้งเดียว ไม่อยากกลับ</div>
+    <div class="mega pop" style="--t:.9s;font-size:250px">สงขลา</div>
+    <div class="sub up" style="--t:1.4s;font-size:66px;font-weight:800">รอคุณอยู่ 💛</div>
+  </div>
+  <div class="center" style="bottom:200px">
+    <div class="btn pop" style="--t:2s">🧳 แพ็กกระเป๋า แล้วมาเที่ยวกัน!</div>
+    <div class="sub up" style="--t:2.6s;margin-top:40px;font-size:40px;font-weight:600">#เที่ยวสงขลา  #หาดใหญ่  #เมืองสองทะเล</div>
+  </div>
+</div>
+
+<div class="brand">📍 SONGKHLA · THAILAND</div>
+<div class="progress"><i></i></div>
+<div id="fade"></div>
+
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
+<script type="module">
+await Promise.all(['400', '600', '800', '900'].map(w => document.fonts.load(`${w} 60px K`, 'สงขลา ABC')));
+await document.fonts.load('60px "Noto Color Emoji"', '🍗');
+const app = await import('./app.js');
+await app.build();
+function seek(t) {
+  for (const a of document.getAnimations()) { a.pause(); a.currentTime = t * 1000; }
+  for (const el of document.querySelectorAll('[data-count]')) {
+    const to = +el.dataset.count, at = +el.dataset.at, dec = +(el.dataset.dec || 0);
+    const u = Math.min(1, Math.max(0, (t - at) / 1.6)), e = 1 - Math.pow(1 - u, 3);
+    el.textContent = (to * e).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  }
+  app.renderAt(t);
+}
+window.seek = seek; window.TOTAL = app.TOTAL; window.READY = true;
+if (!location.search.includes('render')) {
+  const t0 = performance.now();
+  const loop = now => { seek(((now - t0) / 1000) % app.TOTAL); requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>
